@@ -1,0 +1,70 @@
+﻿@model News.Models.UserProfile
+
+@{
+    ViewData["Title"] = "User Profile";
+    Layout = "_Layout";
+}
+
+@section styles {
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0/dist/css/bootstrap.min.css">
+    <style>
+        .profile-container {
+            max-width: 400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .profile-image {
+            width: 200px;
+            height: 200px;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+
+        .profile-details {
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        .top-left {
+            position: absolute;
+            top: 110px;
+            left: 90px;
+        }
+        .user-data{
+            position: absolute;
+            top: 70px;
+            left: 400px;
+        }
+    </style>
+}
+<div class="container">
+    <div class="top-left">
+        <img src="@Model.LogoUrl" class="profile-image" />
+    </div>
+    <div class="profile-container user-data">
+        <div class="profile-details">
+            <form>
+                <div class="mb-3">
+                    <label for="Login" class="form-label">Name</label>
+                    <input type="text" id="Name" name="Name" class="form-control" value="@Model.Name" readonly>
+                </div>
+                <div class="mb-3">
+                    <label for="Login" class="form-label">Login</label>
+                    <input type="text" id="Login" name="Login" class="form-control" value="@Model.Login" readonly>
+                </div>
+                <div class="mb-3">
+                    <label for="Email" class="form-label">Email</label>
+                    <input type="email" id="Email" name="Email" class="form-control" value="@Model.Email" readonly>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section scripts {
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@10"></script>
+    <script>
+    </script>
+}

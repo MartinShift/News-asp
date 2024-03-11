@@ -1,0 +1,368 @@
+﻿@model List<News.DbModels.Waypoint>
+
+@{
+    ViewData["Title"] = "Map";
+    Layout = "_Layout";
+}
+
+@section styles {
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .marker-logo{
+            max-width:600px;
+            max-height:500px;
+        }
+    </style>
+}
+
+<div class="container mt-5">
+    <h2>Map with Waypoints</h2>
+    @if (User.Identity.IsAuthenticated)
+    {
+        <div class="form-check form-switch">
+            <input class="form-check-input" type="checkbox" id="toggle-edit-mode">
+            <label class="form-check-label" for="toggle-edit-mode">Edit Mode</label>
+        </div>
+    }
+    <div id="map" style="height: 500px;"></div>
+    @if (User.Identity.IsAuthenticated)
+    {
+        <div id="waypoint-menu" class="mt-3">
+            <h4>Edit Waypoint</h4>
+            <form>
+                <div class="mb-3">
+                    <label for="waypoint-name" class="form-label">Name</label>
+                    <input type="text" class="form-control" id="waypoint-name" placeholder="Waypoint Name">
+                </div>
+                <div class="mb-3">
+                    <label for="waypoint-lat" class="form-label">Lat</label>
+                    <input type="text" class="form-control" id="waypoint-lat" placeholder="Latitude">
+                </div>
+                <div class="mb-3">
+                    <label for="waypoint-lon" class="form-label">Lon</label>
+                    <input type="text" class="form-control" id="waypoint-lon" placeholder="Longitude">
+                </div> 
+                <div class="mb-3">
+                    <label for="waypoint-desc" class="form-label">Description</label>
+                    <textarea class="form-control" id="waypoint-desc" placeholder="Waypoint Description"></textarea>
+                </div>
+
+                <div class="mb-3">
+                    <label for="Image" class="form-label">Image</label>
+                    <input type="file" class="form-control image-upload" id="waypoint-logo-upload" name="Image" accept="image/*" required>
+                    <img id="waypoint-logo" class="marker-logo">
+                </div>
+               
+                <button type="button" class="btn btn-primary" id="save-waypoint">Save</button>
+                <button type="button" class="btn btn-danger" id="delete-waypoint">Delete</button>
+            </form>
+        </div>
+    }
+    @if (!User.Identity.IsAuthenticated){
+    <div class="card-body">
+            <h1 class="card-title" id="waypoint-name-unauth"></h1>
+            <p class="card-text" id="waypoint-desc-unauth"></p>
+            <img id="waypoint-logo">
+    </div>
+    }
+</div>
+
+@section Scripts {
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.7.27/dist/sweetalert2.all.min.js"></script>
+    <script>
+        var selectedWaypointId = null;
+        var waypointNameInput = document.getElementById('waypoint-name');
+        var waypointLatInput = document.getElementById('waypoint-lat');
+        var waypointLonInput = document.getElementById('waypoint-lon');
+        var waypointDescInput = document.getElementById('waypoint-desc');
+        var waypointName = document.getElementById('waypoint-name-unauth');
+        var waypointDesc = document.getElementById('waypoint-desc-unauth');
+        var waypointImageInput = document.getElementById('waypoint-logo-upload'); 
+        var waypointImageLogo = document.getElementById('waypoint-logo')
+        var userIsAuthorized = @User.Identity.IsAuthenticated.ToString().ToLower();
+        var map = L.map('map').setView([0, 0], 2); // Set initial coordinates and zoom level
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+        var markers = [];
+        var waypointData = @Html.Raw(Json.Serialize(Model));
+        waypointData.forEach(function (waypoint) {
+            if (typeof waypoint.lat === 'number' && typeof waypoint.lon === 'number') {
+                var marker = L.marker([waypoint.lat, waypoint.lon], {
+                    waypointId: waypoint.id,
+                    description: waypoint.description, 
+                    image: waypoint.image, 
+                }).addTo(map);
+                console.log(marker);
+                console.log(waypoint);
+                var waypointIdInput = '<input type="hidden" id="waypointId" value="' + waypoint.id + '" />';
+                marker.bindPopup('<strong>' + waypoint.name + '</strong>' + waypointIdInput);
+
+                marker.on('click', function () {
+                    selectedWaypointId = waypoint.id;
+                    if(userIsAuthorized){
+                    waypointNameInput.value = waypoint.name;                    
+                    waypointLatInput.value = waypoint.lat;
+                    waypointLonInput.value = waypoint.lon;
+                    waypointDescInput.value = waypoint.description;
+                    }
+                    else{
+                        waypointName.textContent = waypoint.name;
+                        waypointDesc.textContent = waypoint.description;
+                    }                  
+                    waypointImageLogo.src = waypoint.imageFile == null ? "https://upload.wikimedia.org/wikipedia/commons/thumb/6/65/No-Image-Placeholder.svg/1200px-No-Image-Placeholder.svg.png" : waypoint.imageFile.rootDirectory + "/" + waypoint.imageFile.filename;
+                });
+
+                markers.push(marker);
+            } else {
+                console.error('Invalid data for waypoint:', waypoint);
+            }
+        });
+
+        var isEditingMode = false;
+        function toggleEditingMode() {
+            isEditingMode = !isEditingMode;
+            if (isEditingMode) {
+                map.dragging.disable(); 
+                map.off('click', addNewWaypoint);
+            } else {
+                map.dragging.enable(); 
+                map.on('click', addNewWaypoint); 
+            }
+        }
+        map.on('click', function (e) {
+            if (userIsAuthorized && selectedWaypointId && isEditingMode) {
+                var selectedMarker = findMarkerById(selectedWaypointId);
+                if (selectedMarker) {
+                    selectedMarker.setLatLng(e.latlng);
+                    selectedMarker.getPopup().setContent('<strong>' + waypointNameInput.value + '</strong>');
+                    updateWaypointOnServer(selectedWaypointId, waypointNameInput.value, e.latlng.lat, e.latlng.lng);
+                }
+            }
+        });
+        // Event listener for the toggle editing mode button
+        var toggleEditModeButton = document.getElementById('toggle-edit-mode');
+        
+        $("input.image-upload").on("change", (e) => {
+            const fileInput = e.target;
+            const formData = new FormData();
+            formData.append("file", fileInput.files[0]);
+            const index =  selectedWaypointId;
+            fetch(`/Waypoint/Uploads/${index}`, {
+                method: "post",
+                body: formData
+            }).then(r => r.json())
+                .then(data => {
+                    console.log(data);
+                });
+        });
+        function findMarkerById(waypointId) {
+            for (var i = 0; i < markers.length; i++) {
+                if (markers[i].options.waypointId === waypointId) {
+                    return markers[i];
+                }
+            }
+            return null;
+        }
+        function updateWaypointOnServer(waypointId, name, lat, lon,desc) {
+            var data = {
+                id: waypointId,
+                name: name,
+                lat: lat,
+                lon: lon,
+                description: desc,
+            };
+
+            fetch('/Waypoint/Edit', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data),
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Update the marker's popup content on the map
+                       
+                        var marker = findMarkerById(waypointId); 
+                        console.log(marker)
+                        if (marker) {
+                            marker.getPopup().setContent('<strong>' + name + '</strong>'); // Update with the new name
+                        }
+                        console.log(marker);
+                        Swal.fire("Success!","Waypoint updated successfuly","success");
+                    } else {
+                        // Handle any errors
+                        Swal.fire('Error', 'Failed to update waypoint', 'error');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    Swal.fire('Error', 'Failed to update waypoint', 'error');
+                });
+        }
+        function addWaypointMarker(latlng, name,id) {
+            if (isEditingMode) {
+                return;
+            }
+            if (typeof latlng.lat === 'number' && typeof latlng.lng === 'number') {
+                var marker = L.marker(latlng, {
+                    waypointId: id,
+                    draggable: userIsAuthorized,
+                    description: "",
+                    image: null,
+                }).addTo(map);
+                var waypointIdInput = '<input type="hidden" id="waypointId" value="' + id + '" />';
+                marker.bindPopup('<strong>' + name + '</strong>' + waypointIdInput);
+                marker.on('click', function () {
+                    selectedWaypointId = id;
+                    waypointNameInput.value =  name;
+                    waypointLatInput.value = latlng.lat;
+                    waypointLonInput.value = latlng.lng;
+                    waypointDescInput.value = "";
+                    waypointImageLogo.src = "https://upload.wikimedia.org/wikipedia/commons/thumb/6/65/No-Image-Placeholder.svg/1200px-No-Image-Placeholder.svg.png";
+                });
+
+                markers.push(marker);
+            } else {
+                console.error('Invalid data for waypoint:', waypoint);
+            }
+        }
+        if (userIsAuthorized) {
+            toggleEditModeButton.addEventListener('click', toggleEditingMode);
+            var waypointMenu = document.getElementById('waypoint-menu');
+            var waypointNameInput = document.getElementById('waypoint-name');
+            var waypointLatInput = document.getElementById('waypoint-lat');
+            var waypointLonInput = document.getElementById('waypoint-lon');
+            var saveButton = document.getElementById('save-waypoint');
+            var deleteButton = document.getElementById('delete-waypoint');
+            var waypointIdInput = document.getElementById('waypointId');
+            saveButton.addEventListener('click', function () {
+                var waypointName = waypointNameInput.value;
+                var waypointLat = parseFloat(waypointLatInput.value);
+                var waypointLon = parseFloat(waypointLonInput.value);
+                var waypointDesc = waypointDescInput.value; // Get description value
+                var waypointImageFile = waypointImageInput.files[0]; // Get image file
+              
+                var selectedMarker = findMarkerById(selectedWaypointId);
+
+                if (selectedMarker) {
+                    selectedMarker.setLatLng([waypointLat, waypointLon]);
+                    selectedMarker.getPopup().setContent('<strong>' + waypointName + '</strong>');
+                }
+
+                // Update the waypoint on the server
+                updateWaypointOnServer(selectedWaypointId, waypointName, waypointLat, waypointLon, waypointDesc);
+            });
+            deleteButton.addEventListener('click', function () {
+                var waypointId = selectedWaypointId;
+
+                if (waypointId) {
+                    Swal.fire({
+                        title: 'Delete Waypoint',
+                        text: 'Are you sure you want to delete this waypoint?',
+                        icon: 'warning',
+                        showCancelButton: true,
+                        confirmButtonColor: '#d33',
+                        confirmButtonText: 'Delete'
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            
+                            var data = waypointId ;
+                            console.log(data);
+                            fetch('/Waypoint/Delete', {
+                                method: 'POST',  
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                },
+                                body: JSON.stringify(data),
+                            })
+                                .then(response => response.json())
+                                .then(data => {
+                                    if (data.success) {
+                                        // Remove the marker from the map
+                                        var marker = findMarkerById(waypointId);
+                                        if (marker) {
+                                            map.removeLayer(marker);
+                                        }
+                                        // Clear the form inputs
+                                        waypointNameInput.value = '';
+                                        waypointLatInput.value = '';
+                                        waypointLonInput.value = '';
+                                        // Deselect the waypoint
+                                        selectedWaypointId = null;
+                                    } else {
+                                        // Handle any errors
+                                        Swal.fire('Error', 'Failed to delete waypoint', 'error');
+                                    }
+                                })
+                                .catch(error => {
+                                    console.error('Error:', error);
+                                    Swal.fire('Error', 'Failed to delete waypoint', 'error');
+                                });
+                        }
+                    });
+                } else {
+                    Swal.fire('Error', 'No waypoint selected for deletion', 'error');
+                }
+            });
+
+
+            var selectedWaypointId = null;
+
+            map.on('click', function (e) {
+                if (userIsAuthorized && !isEditingMode) {
+                    Swal.fire({
+                        title: 'Enter Waypoint Name',
+                        input: 'text',
+                        inputPlaceholder: 'Waypoint Name',
+                        showCancelButton: true,
+                        confirmButtonText: 'Add',
+                        preConfirm: (name) => {
+                            if (!name) {
+                                Swal.showValidationMessage('Please enter a name for the waypoint');
+                            }
+                            return name;
+                        }
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            // Send an AJAX request to add the waypoint to the server
+                            var waypointData = {
+                                name: result.value,
+                                lat: e.latlng.lat,
+                                lon: e.latlng.lng,
+                                description: "", // Set description to an empty string
+                                image: null,     // Set image to null
+                            };
+
+                            fetch('/Waypoint/Add', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                },
+                                body: JSON.stringify(waypointData),
+                            })
+                                .then(response => response.json())
+                                .then(data => {
+                                    if (data.success) {
+                                        addWaypointMarker(e.latlng, result.value, data.id);
+                                    } else {
+                                        // Handle any errors
+                                        Swal.fire('Error', 'Failed to add waypoint', 'error');
+                                    }
+                                })
+                                .catch(error => {
+                                    console.error('Error:', error);
+                                    Swal.fire('Error', 'Failed to add waypoint', 'error');
+                                });
+                        }
+                    });
+                }
+            });
+        }
+    </script>
+}

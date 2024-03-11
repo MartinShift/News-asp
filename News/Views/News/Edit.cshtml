@@ -1,0 +1,98 @@
+﻿@model List<News.Models.NewsModel>
+
+@{
+    Layout = "_Layout";
+}
+
+<!-- Include SweetAlert2 library for notifications -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@10"></script>
+
+@section styles {
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0/dist/css/bootstrap.min.css">
+    <style>
+        .news-title {
+            font-size: 24px;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .news-text {
+            font-size: 18px;
+            text-align: center;
+        }
+
+        .news-image {
+            max-width: 80%;
+            display: block;
+            margin: 0 auto;
+        }
+        
+        /* Add some styling for the news model forms */
+        .news-model-form {
+            margin-bottom: 20px;
+        }
+    </style>
+}
+
+<div class="container">
+    <h1 class="mt-5 mb-4">Edit News</h1>
+
+    <!-- Button to add a new empty news model -->
+    <button id="add-news-model" class="btn btn-success">Add News Model</button>
+
+    <!-- Form for adding/editing news models -->
+    <div id="news-form-container">
+        @for (int i = 0; i < Model.Count; i++)
+        {
+            var newsModel = Model[i];
+            <div class="news-model-form">
+                <form method="post" class="edit-news-model-form" data-news-model-id="@newsModel.Id">
+                    <input type="hidden" name="Id" value="@newsModel.Id" />
+
+                    <div class="mb-3">
+                        <label for="Title" class="form-label">Title</label>
+                        <input type="text" class="form-control" name="Title" value="@newsModel.Title" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="Image" class="form-label">Image</label>
+                        <input type="file" class="form-control image-upload" data-id = "@newsModel.Id" id="Image" name="Image" accept="image/*" required>
+                    </div>
+
+
+                    <div class="mb-3">
+                        <label for="ShortText" class="form-label">Short Text</label>
+                        <textarea class="form-control" name="ShortText" rows="4" required>@newsModel.ShortText</textarea>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="FullText" class="form-label">Full Text</label>
+                        <textarea class="form-control" name="FullText" rows="8" required>@newsModel.FullText</textarea>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="Date" class="form-label">Date</label>
+                        <input type="date" class="form-control" name="Date" value="@newsModel.Date.ToString("yyyy-MM-dd")" required>
+                    </div>
+
+                    <!-- Delete button for this news model -->
+                    <button type="button" class="btn btn-danger delete-news-model">Delete</button>
+                </form>
+            </div>
+        }
+    </div>
+
+    <!-- Single Save button for all news models -->
+    <button type="button" class="btn btn-primary" id="save-news-models">Save</button>
+    <a href="@Url.Action("Index", "News")" class="btn btn-secondary">Cancel</a>
+</div>
+@section Scripts {
+    <script>
+        let newsModels = @Html.Raw(Json.Serialize(Model));
+    </script>
+    <script
+  src="https://code.jquery.com/jquery-3.7.1.js"
+  integrity="sha256-eKhayi8LEQwp4NKxN+CfCh+3qOVUtJn3QNZ0TciWLP4="
+  crossorigin="anonymous"></script>
+    <script src="/js/EditScript.js"></script>
+}

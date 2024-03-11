@@ -1,0 +1,78 @@
+﻿@{
+    var isAuthenticated = User.Identity.IsAuthenticated;
+}
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/x-icon" href="https://www.freeiconspng.com/thumbs/news-icon/news-icon-24.png">
+    <title>@ViewData["Title"] - News</title>
+    @RenderSection("styles", required: false)
+</head>
+<body>
+    <header>
+      
+        <nav class="navbar navbar-expand-lg navbar-light bg-light">
+            <div class="container-fluid">
+                <a class="navbar-brand" href="/News">News</a>
+                <a class="navbar-brand" href="/Map">Map</a>
+                <a class="navbar-brand" href="/Todo">Todo List</a>
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                <div class="collapse navbar-collapse justify-content-end" id="navbarNav">
+                    <ul class="navbar-nav">
+                        @if (isAuthenticated)
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link" href="/Account/EditProfile">Edit Profile</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="/Account/UserProfile">View Profile</a>
+                            </li>
+                            <li class="nav-item">
+                                <button type="button" class="btn btn-link nav-link" onclick="logout()">Logout</button>
+                            </li>
+                        }
+                        else
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link" href="/Account/Login">Login</a>
+                            </li>
+                        }
+                    </ul>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <div class="container mt-4">
+        @RenderBody()
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0/dist/js/bootstrap.min.js"></script>
+    <script>
+        function logout() {
+            fetch('/Account/Logout', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+                .then(response => {
+                    if (response.ok) {
+                        window.location.href = '/Account/Login';
+                    } else {
+                        console.log(response)
+                        console.error('Logout failed');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                });
+        }
+
+    </script>
+    @RenderSection("Scripts",required:false);
+</body>
+</html>

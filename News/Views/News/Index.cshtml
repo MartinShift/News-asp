@@ -1,0 +1,58 @@
+﻿@model List<News.Models.NewsModel> 
+@{
+    Layout = "_Layout";
+}
+
+@section styles {
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0/dist/css/bootstrap.min.css">
+    <style>
+
+        .news-title {
+            font-size: 24px; 
+            text-align: center;
+            margin-bottom: 20px; 
+        }
+
+        .news-text {
+            font-size: 18px;
+            text-align: center;
+        }
+
+        .news-image {
+            max-height: 45%; 
+            max-width:65%;
+            display: block;
+            margin: 0 auto; 
+        }
+
+        .card-body {
+            height: 600px; 
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+    </style>
+}
+<div class="container">
+
+    <h1 class="mt-5 mb-4">Latest News</h1>
+
+    <a href="@Url.Action("Edit", "News")" class="btn btn-primary mb-4">Edit Page</a>
+
+    <div class="row row-cols-1 row-cols-md-3">
+        @foreach (var newsItem in Model)
+        {
+            <div class="col mb-4">
+                <div class="card card-body">
+                    <img src="@newsItem.ImageUrl" class="card-img-top news-image" alt="@newsItem.Title">
+                    <div class="card-body">
+                        <h5 class="card-title news-title">@newsItem.Title</h5>
+                        <p class="card-text news-text">@newsItem.ShortText</p>
+                        <p class="card-date">@newsItem.Date.ToString("MMMM dd, yyyy")</p>
+                        <a href="@Url.Action("NewsDetail", "News", new { id = newsItem.Id })" class="btn btn-primary">Learn More</a>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+</div>
